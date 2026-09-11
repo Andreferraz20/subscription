@@ -11,25 +11,29 @@ Domain: `SystemUser` (credentials, created first) → `User` (profile, always li
 
 ### Done
 
-- Dependencies: Flyway, Elytron security (BCrypt), SmallRye JWT (build + verify),
-  Scheduler.
+- Dependencies: Flyway (`quarkus-flyway` + `flyway-database-postgresql`), Elytron
+  security (BCrypt), SmallRye JWT (build + verify), Scheduler.
 - Migrations: `system_users`, `users`, `refresh_tokens` (Flyway, in that order).
 - Entities + Panache repositories: `SystemUser`, `User` (`@OneToOne` to `SystemUser`),
   `RefreshToken` (`@ManyToOne` to `SystemUser`, self-referencing `replacedBy`).
-- `SignupRequest`/`SignupResponse` DTOs (records).
-- `POST /auth/signup` wired end-to-end (`AuthResource` → `AuthService`), creates
-  `SystemUser` + `User` in one transaction, password hashed with BCrypt.
+- `SignupRequest`, `LoginRequest`, `TokenResponse` DTOs (records).
+- `UnauthorizedException`/`ForbiddenException` (`common/exception`), mapped to 401/403
+  via `WebApplicationException`.
+- `POST /auth/signup` wired end-to-end — creates `SystemUser` + `User` in one
+  transaction, password hashed with BCrypt.
+- `POST /auth/login` wired end-to-end — validates password, generic 401 for
+  unknown email/wrong password/locked account (no oracle), lockout after 5 failed
+  attempts (`dontRollbackOn` so the counter survives the thrown exception), issues
+  JWT access token + refresh token (`issueTokens`, shared helper — not yet called
+  from signup).
+- Tested manually end-to-end: signup → login → 5x wrong password → lockout confirmed
+  in the database (`failed_login_attempts`, `locked_until`) and via the API (401 even
+  with the correct password once locked).
 
 ### In progress / next
 
-- Fix: `user.lastName` not being set in `AuthService.signup` yet (will violate the
-  `NOT NULL` constraint).
-- Decide/finish `SignupResponse` payload.
-- Login (`POST /auth/login`): validate password, lockout after failed attempts, issue
-  JWT + first `refresh_tokens` row.
-- Extract `issueTokens(SystemUser)` in `AuthService` (shared by login and signup) —
-  signup should auto-login and return tokens too, no separate login call required
-  right after creating the account.
+- Call `issueTokens` from `signup` too, so signup auto-logs in (no separate login call
+  needed right after creating the account).
 - Refresh (`POST /auth/refresh`): rotation with reuse detection (family revocation on
   reuse of an already-rotated token).
 - Logout (`POST /auth/logout`): revoke current or all refresh tokens for the account.

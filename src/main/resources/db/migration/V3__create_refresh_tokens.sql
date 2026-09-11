@@ -2,7 +2,7 @@ CREATE TABLE refresh_tokens (
                                 id BIGSERIAL PRIMARY KEY,
                                 system_user_id BIGINT NOT NULL REFERENCES system_users(id) ON DELETE CASCADE,
                                 family_id UUID NOT NULL,
-                                token_hash CHAR(64) NOT NULL UNIQUE,
+                                token_hash VARCHAR(64) NOT NULL UNIQUE,
                                 issued_at TIMESTAMP NOT NULL DEFAULT now(),
                                 expires_at TIMESTAMP NOT NULL,
                                 revoked_at TIMESTAMP,
