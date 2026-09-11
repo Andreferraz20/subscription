@@ -4,6 +4,39 @@ This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
 If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
 
+## Auth module roadmap
+
+Domain: `SystemUser` (credentials, created first) → `User` (profile, always linked to a
+`SystemUser`) → `RefreshToken` (1:N, one `SystemUser` can have several active sessions).
+
+### Done
+
+- Dependencies: Flyway, Elytron security (BCrypt), SmallRye JWT (build + verify),
+  Scheduler.
+- Migrations: `system_users`, `users`, `refresh_tokens` (Flyway, in that order).
+- Entities + Panache repositories: `SystemUser`, `User` (`@OneToOne` to `SystemUser`),
+  `RefreshToken` (`@ManyToOne` to `SystemUser`, self-referencing `replacedBy`).
+- `SignupRequest`/`SignupResponse` DTOs (records).
+- `POST /auth/signup` wired end-to-end (`AuthResource` → `AuthService`), creates
+  `SystemUser` + `User` in one transaction, password hashed with BCrypt.
+
+### In progress / next
+
+- Fix: `user.lastName` not being set in `AuthService.signup` yet (will violate the
+  `NOT NULL` constraint).
+- Decide/finish `SignupResponse` payload.
+- Login (`POST /auth/login`): validate password, lockout after failed attempts, issue
+  JWT + first `refresh_tokens` row.
+- Extract `issueTokens(SystemUser)` in `AuthService` (shared by login and signup) —
+  signup should auto-login and return tokens too, no separate login call required
+  right after creating the account.
+- Refresh (`POST /auth/refresh`): rotation with reuse detection (family revocation on
+  reuse of an already-rotated token).
+- Logout (`POST /auth/logout`): revoke current or all refresh tokens for the account.
+- Login rate limiting by IP (in-memory sliding window).
+- `RefreshTokenCleanupJob` (`@Scheduled`) to purge expired/revoked tokens.
+- Tests (`@QuarkusTest` + rest-assured), especially the refresh reuse-detection case.
+
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:

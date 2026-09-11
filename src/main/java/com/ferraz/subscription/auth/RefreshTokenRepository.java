@@ -1,4 +1,14 @@
 package com.ferraz.subscription.auth;
 
-public class RefreshTokenRepository {
+import io.quarkus.hibernate.orm.panache.PanacheRepository;
+import jakarta.enterprise.context.ApplicationScoped;
+
+import java.util.Optional;
+
+@ApplicationScoped
+public class RefreshTokenRepository implements PanacheRepository<RefreshToken> {
+
+    public Optional<RefreshToken> findByTokenHash(String hash) {
+        return find("tokenHash = ?1", hash).firstResultOptional();
+    }
 }
